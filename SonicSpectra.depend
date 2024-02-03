@@ -1,0 +1,35 @@
+# depslib dependency file v1.0
+1706924421 source:c:\users\mckenzie regalado\desktop\files\c gui projects\sonicspectra\main.c
+	<stdio.h>
+	<stdlib.h>
+	<math.h>
+	<stdint.h>
+	<string.h>
+	"raylib.h"
+	"realfft.h"
+	"tag_c.h"
+
+1704794285 c:\users\mckenzie regalado\desktop\files\c gui projects\sonicspectra\include\raylib.h
+	<stdarg.h>
+	<stdbool.h>
+
+1706843715 source:c:\users\mckenzie regalado\desktop\files\c gui projects\sonicspectra\add.c
+	<stdio.h>
+	"Add.h"
+
+1703926453 c:\users\mckenzie regalado\desktop\files\c gui projects\sonicspectra\include\realfft.h
+
+1704716683 c:\users\mckenzie regalado\desktop\files\c gui projects\sonicspectra\include\tag_c.h
+	<windows.h>
+
+1705264685 source:c:\users\mckenzie regalado\desktop\files\c gui projects\sonicspectra\fourier1.c
+	<stdio.h>
+	<math.h>
+
+1705057305 source:c:\users\mckenzie regalado\desktop\files\c gui projects\sonicspectra\realfft.c
+	<stdio.h>
+	<math.h>
+	"fourier.h"
+
+1703926453 c:\users\mckenzie regalado\desktop\files\c gui projects\sonicspectra\include\fourier.h
+
