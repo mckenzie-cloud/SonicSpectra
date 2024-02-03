@@ -72,10 +72,14 @@ int main(void)
 
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "SonicSpectra");
     InitAudioDevice();              // Initialize audio device driver.
+
     //--------------------------------------------------------------------------------------
-    Image app_icon = LoadImage("resources/app-icon.png");
+    const char *icon_path = "resources/app-icon.png";
+    Image app_icon = LoadImage(icon_path);
     SetWindowIcon(app_icon);
     UnloadImage(app_icon);
+
+    //--------------------------------------------------------------------------------------
     /* Set font size */
     int font_size = 10;
 
