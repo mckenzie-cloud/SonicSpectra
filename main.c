@@ -69,12 +69,11 @@ void DisplayProgressBar(int time_played);
 int main(void)
 {
     // Initialization
-
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "SonicSpectra");
     InitAudioDevice();              // Initialize audio device driver.
 
     //--------------------------------------------------------------------------------------
-    const char *icon_path = "resources/app-icon.png";
+    const char *icon_path = "app-icon.png";
     Image app_icon = LoadImage(icon_path);
     SetWindowIcon(app_icon);
     UnloadImage(app_icon);
@@ -101,7 +100,7 @@ int main(void)
     float time_played = 0.0f;
     unsigned int fs   = 0;
 
-    SetTargetFPS(60);               // Set to render at 60 frames-per-second
+    SetTargetFPS(60);            // Set target FPS (maximum)
 
     // Main game loop
     while (!WindowShouldClose()) {  // Detect window close button or ESC key
