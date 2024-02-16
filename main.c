@@ -18,9 +18,9 @@
 #define TARGET_FREQ_SIZE 10
 
 #define BG_COLOR (Color) {0, 0, 0, 255}
-#define TEXT_COLOR (Color) {244, 234, 224, 255}
-#define SPECTRUM_COLOR (Color) {250, 246, 240, 255}
-#define PROGRESS_BAR_COLOR (Color) {244, 223, 200, 255}
+#define TEXT_COLOR (Color) {242, 240, 228, 255}
+#define SPECTRUM_COLOR (Color) {242, 68, 5, 255}
+#define PROGRESS_BAR_COLOR (Color) {242, 92, 5, 255}
 
 /*
  * Author: Mckenzie J. Regalado
@@ -412,7 +412,7 @@ void VisualizeSpectrum(float spectrum_scaling_factor)
     int h = SCREEN_HEIGHT - 32;
     for (size_t i = 0; i < TARGET_FREQ_SIZE-1; i++) {
         /* code */
-        DrawRectangleLines(184 + (i * 16), h - (spectrum_scaling_factor*data.smooth_spectrum[i]), 15, (spectrum_scaling_factor*data.smooth_spectrum[i]), SPECTRUM_COLOR);
+        DrawRectangle(184 + (i * 16), h - (spectrum_scaling_factor*data.smooth_spectrum[i]), 15, (spectrum_scaling_factor*data.smooth_spectrum[i]), SPECTRUM_COLOR);
     }
 }
 
