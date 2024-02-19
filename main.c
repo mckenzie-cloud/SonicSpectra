@@ -412,7 +412,7 @@ void VisualizeSpectrum(float spectrum_scaling_factor)
     int h = SCREEN_HEIGHT - 32;
     for (size_t i = 0; i < TARGET_FREQ_SIZE-1; i++) {
         /* code */
-        DrawRectangle(184 + (i * 16), h - (spectrum_scaling_factor*data.smooth_spectrum[i]), 15, (spectrum_scaling_factor*data.smooth_spectrum[i]), SPECTRUM_COLOR);
+        DrawRectangleLines(184 + (i * 16), h - (spectrum_scaling_factor*data.smooth_spectrum[i]), 15, (spectrum_scaling_factor*data.smooth_spectrum[i]), SPECTRUM_COLOR);
     }
 }
 
