@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 #include <math.h>
-#include "fourier.h"
+#include "../include/fourier.h"
 
 /***************************************************************************************************************************************
  * Reference: Press, William H., et al. Numerical Recipes: The Art of Scientific Computing. 3rd ed., Cambridge University Press, 2007. * 

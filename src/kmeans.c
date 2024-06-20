@@ -30,30 +30,34 @@ void getDominantColors(int n_points, Color *image_color_data, Color *dominant_co
 {
     int centroids[K_CLUSTERS][3];
 
-    srand(time(NULL));
-
     InitializeCentroid(centroids, n_points, image_color_data);
 
     int prev_c1_counter = 0;                // Stopping criterion.
 
+    // Initialize cluster lists.
+    int **clusters = (int**) malloc(K_CLUSTERS * sizeof(int*));
+
+    for (int i=0; i<K_CLUSTERS; i++) {
+        clusters[i] = (int*) malloc(n_points * sizeof(int));
+    }
+
     int cluster_size[K_CLUSTERS];
 
-    memset(cluster_size, 0, K_CLUSTERS*sizeof(int));
-
-    for (int iter = 0; iter < MAX_ITERATION; iter++) {
-        // Initialize cluster lists.
-        int **clusters = (int**) malloc(K_CLUSTERS * sizeof(int*));
-
-        for (int i=0; i<K_CLUSTERS; i++) {
-            clusters[i] = (int*) malloc(n_points * sizeof(int));
+    for (int iter = 0; iter < MAX_ITERATION; iter++) 
+    {
+        for (int k = 0; k < K_CLUSTERS; k++)
+        {
+            /* code */
+            // Initialize the value of each cluster to zero.
+            if (cluster_size[k] > 0) {
+                memset(clusters[k], 0, sizeof(int) * cluster_size[k]);
+            }
         }
-
-        int c_counter[K_CLUSTERS];
-        memset(c_counter, 0, K_CLUSTERS*sizeof(int));
+        memset(cluster_size, 0, K_CLUSTERS*sizeof(int));
 
         for (int d = 0; d < n_points; d++) {
             /*
-             * 441 is the maximum distance of two colors.
+             * 441 is the maximum distance of two (RGB) colors.
              * i.e. the distance from white (255, 255, 255) to black (0,0,0) using the Euclidean distance.
             */
             int cluster_id = 0;
@@ -61,7 +65,7 @@ void getDominantColors(int n_points, Color *image_color_data, Color *dominant_co
             int min_distance = INT_MAX;
 
             for (int i = 0; i < K_CLUSTERS; i++) {
-                // calculate the distance from point-d to each cluster k.
+                // calculate the distance from point-d to each centroid-i.
                 Color color = (Color) {
                     centroids[i][0], centroids[i][1], centroids[i][2]
                 };
@@ -74,40 +78,57 @@ void getDominantColors(int n_points, Color *image_color_data, Color *dominant_co
 
             for (int j = 0; j < K_CLUSTERS; j++) {
                 if (cluster_id == j) {
-                    clusters[j][c_counter[j]++] = d;
+                    clusters[j][cluster_size[j]++] = d;
                 }
             }
         }
 
-        if (prev_c1_counter == c_counter[0]) {          // If the size of the 1st-cluster is not changing, stop the loop.
+        if (prev_c1_counter == cluster_size[0]) {          // If the size of the 1st-cluster is not changing, stop the loop.
             break;
         }
-        prev_c1_counter = c_counter[0];
+        prev_c1_counter = cluster_size[0];
 
         for (int i = 0; i < K_CLUSTERS; i++) {
-            cluster_size[i] = c_counter[i];
-            getNewCentroid(clusters[i], centroids[i], c_counter[i], image_color_data);
+            getNewCentroid(clusters[i], centroids[i], cluster_size[i], image_color_data);
         }
-
-        for (int j=0; j<K_CLUSTERS; j++) {
-            free(clusters[j]);
-        }
-
-        free(clusters);
     }
+
+    for (int j=0; j<K_CLUSTERS; j++) {
+        free(clusters[j]);        // free the allocated space for each cluster.
+        clusters[j] = NULL;       // set the pointer to NULL.
+    }
+
+    free(clusters);               // free the allocated space for K-clusters.
+    clusters = NULL;              // set the pointer to NULL.
+
+    int max_cluster_size = 0;
+    int max_cluster_size_index = 0;
+
+    for (int i = 0; i < K_CLUSTERS; i++)
+    {
+        /* code */
+        if (cluster_size[i] > max_cluster_size) {
+            max_cluster_size = cluster_size[i];
+            max_cluster_size_index = i;
+        }
+    }
+
+    Color color = (Color) {
+        centroids[max_cluster_size_index][0], centroids[max_cluster_size_index][1], centroids[max_cluster_size_index][2], 255
+    };
+
+    dominant_colors[0] = color;      // The most dominant color in our list will be the background color.
+
+    int index = 1;
 
     for (int i=0; i<K_CLUSTERS; i++) {
-        Color color = (Color) {
-            centroids[i][0], centroids[i][1], centroids[i][2], 255
-        };
-        dominant_colors[i] = color;
+        if (i != max_cluster_size_index) {
+            color = (Color) {
+                centroids[i][0], centroids[i][1], centroids[i][2], 255
+            };
+            dominant_colors[index++] = color;
+        }
     }
-}
-
-
-int gen_random_number(int lower_bound, int upper_bound)
-{
-    return rand() % (upper_bound - lower_bound + 1) + lower_bound;
 }
 
 /* This function returns the squared euclidean distance
@@ -124,7 +145,6 @@ int distanceSquared(Color *color1, Color *color2)
     int d = r*r + g*g + b*b;
     return d;
 }
-
 
 // K-MEANS++
 void InitializeCentroid(int centroid[][3], int n_points, Color *image_color_data)
@@ -187,4 +207,3 @@ void getNewCentroid(int *cluster_list, int *centroid, int n_points, Color *image
     centroid[1] = g;
     centroid[2] = b;
 }
-

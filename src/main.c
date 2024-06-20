@@ -4,10 +4,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "raylib.h"
-#include "realfft.h"
-#include "tag_c.h"
-#include "kmeans.h"
+#include "../include/raylib.h"
+#include "../include/realfft.h"
+#include "../include/tag_c.h"
+#include "../include/kmeans.h"
+
 
 #define SCREEN_HEIGHT 512
 #define SCREEN_WIDTH 512
@@ -311,28 +312,33 @@ void InitializeMusicInfo(const char *music_file_path, MusicInfo *music_info, Tex
 
     *album_cover_texture = LoadTextureFromImage(image); // Image converted to texture, GPU memory (VRAM)
 
-    Color *color_data = (Color *)malloc((ALBUM_COVER_SIZE * ALBUM_COVER_SIZE) * sizeof(Color));
+    int n_points = ALBUM_COVER_SIZE * ALBUM_COVER_SIZE;
 
-    // Fill with colors
-    for (int i = 0; i < ALBUM_COVER_SIZE * ALBUM_COVER_SIZE; i++)
+    Color *color_data = (Color *)malloc(n_points * sizeof(Color));
+
+    if (color_data != NULL) 
     {
-        int row = (int)i / ALBUM_COVER_SIZE;
-        int col = (int)i % ALBUM_COVER_SIZE;
-        color_data[i] = GetImageColor(image, row, col);
+        // Fill with colors
+        for (int i = 0; i < n_points; i++)
+        {
+            int row = (int)i / ALBUM_COVER_SIZE;
+            int col = (int)i % ALBUM_COVER_SIZE;
+            color_data[i] = GetImageColor(image, row, col);
+        }
+
+        /*
+         * Get top 4 most dominant colors in an image randomly.
+         * Color Quantization Using k-Means Clustering Algorithm.
+         */
+
+        Color dominant_colors[4];                                                            // Note: Size = 4 is fixed.
+        getDominantColors(n_points, color_data, dominant_colors); // From kmeans.h
+
+        BG_COLOR = dominant_colors[0];
+        TEXT_COLOR = dominant_colors[1];
+        SPECTRUM_COLOR = dominant_colors[2];
+        PROGRESS_BAR_COLOR = dominant_colors[3];
     }
-
-    /*
-     * Get top 4 most dominant colors in an image randomly.
-     * Color Quantization Using k-Means Clustering Algorithm.
-     */
-
-    Color dominant_colors[4];                                                            // Note: Size = 4 is fixed.
-    getDominantColors(ALBUM_COVER_SIZE * ALBUM_COVER_SIZE, color_data, dominant_colors); // From kmeans.h
-
-    BG_COLOR = dominant_colors[0];
-    TEXT_COLOR = dominant_colors[1];
-    SPECTRUM_COLOR = dominant_colors[2];
-    PROGRESS_BAR_COLOR = dominant_colors[3];
 
     free(color_data);
     UnloadImage(image);
