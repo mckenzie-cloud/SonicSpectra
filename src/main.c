@@ -4,10 +4,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../include/raylib.h"
-#include "../include/realfft.h"
-#include "../include/tag_c.h"
-#include "../include/kmeans.h"
+#include "raylib.h"
+#include "realfft.h"
+#include "tag_c.h"
+#include "kmeans.h"
 
 
 #define SCREEN_HEIGHT 512
