@@ -7,7 +7,7 @@
 #include "raylib.h"
 #include "kmeans.h"
 
-#define K_CLUSTERS 4
+#define K_CLUSTERS 4                // Number of group of colors.
 #define MAX_ITERATION 50
 
 
@@ -26,22 +26,26 @@
  * neptune.ai/blog/k-means-clustering
  * */
 
-void getDominantColors(int n_points, Color *image_color_data, Color *dominant_colors)
+void getDominantColors(int n_points, Color image_color_data[], Color dominant_colors[])
 {
     int centroids[K_CLUSTERS][3];
 
     InitializeCentroid(centroids, n_points, image_color_data);
 
-    int prev_c1_counter = 0;                // Stopping criterion.
-
     // Initialize cluster lists.
-    int **clusters = (int**) malloc(K_CLUSTERS * sizeof(int*));
+    int **clusters;
+    clusters = malloc(K_CLUSTERS * sizeof(*clusters));
+    clusters[0] = malloc(K_CLUSTERS * n_points * sizeof(*clusters[0]));
 
-    for (int i=0; i<K_CLUSTERS; i++) {
-        clusters[i] = (int*) malloc(n_points * sizeof(int));
+    for (int i = 1; i < K_CLUSTERS; ++i)
+    {
+        /* code */
+        clusters[i] = &clusters[0][i*n_points];
     }
 
     int cluster_size[K_CLUSTERS];
+
+    int prev_c1_counter = 0;                // Stopping criterion.
 
     for (int iter = 0; iter < MAX_ITERATION; iter++) 
     {
@@ -69,7 +73,7 @@ void getDominantColors(int n_points, Color *image_color_data, Color *dominant_co
                 Color color = (Color) {
                     centroids[i][0], centroids[i][1], centroids[i][2]
                 };
-                float dist = distanceSquared(&color, &image_color_data[d]);
+                int dist = distanceSquared(&color, &image_color_data[d]);
                 if (dist < min_distance) {
                     min_distance = dist;
                     cluster_id = i;
@@ -92,14 +96,15 @@ void getDominantColors(int n_points, Color *image_color_data, Color *dominant_co
             getNewCentroid(clusters[i], centroids[i], cluster_size[i], image_color_data);
         }
     }
-
-    for (int j=0; j<K_CLUSTERS; j++) {
-        free(clusters[j]);        // free the allocated space for each cluster.
-        clusters[j] = NULL;       // set the pointer to NULL.
-    }
-
-    free(clusters);               // free the allocated space for K-clusters.
-    clusters = NULL;              // set the pointer to NULL.
+    
+    /*
+     * Free the allocated memory for clusters.
+    */
+    free(clusters[0]);
+    clusters[0] = NULL;
+    free(clusters);
+    clusters = NULL;
+    //------------------------------------------          
 
     int max_cluster_size = 0;
     int max_cluster_size_index = 0;
@@ -147,7 +152,7 @@ int distanceSquared(Color *color1, Color *color2)
 }
 
 // K-MEANS++
-void InitializeCentroid(int centroid[][3], int n_points, Color *image_color_data)
+void InitializeCentroid(int centroids[][3], int n_points, Color image_color_data[])
 {
 
     /* Initialize 1st centroid randomly */
@@ -179,13 +184,13 @@ void InitializeCentroid(int centroid[][3], int n_points, Color *image_color_data
     }
 
     for (int c = 0; c < K_CLUSTERS; c++) {
-        centroid[c][0] = cluster_color[c].r;
-        centroid[c][1] = cluster_color[c].g;
-        centroid[c][2] = cluster_color[c].b;
+        centroids[c][0] = cluster_color[c].r;
+        centroids[c][1] = cluster_color[c].g;
+        centroids[c][2] = cluster_color[c].b;
     }
 }
 
-void getNewCentroid(int *cluster_list, int *centroid, int n_points, Color *image_color_data)
+void getNewCentroid(int *cluster_list, int *centroid, int n_points, Color image_color_data[])
 {
     if (cluster_list == NULL || n_points == 0) {
         return;

@@ -314,15 +314,15 @@ void InitializeMusicInfo(const char *music_file_path, MusicInfo *music_info, Tex
 
     int n_points = ALBUM_COVER_SIZE * ALBUM_COVER_SIZE;
 
-    Color *color_data = (Color *)malloc(n_points * sizeof(Color));
+    Color *color_data = malloc(n_points * sizeof(Color));
 
     if (color_data != NULL) 
     {
         // Fill with colors
         for (int i = 0; i < n_points; i++)
-        {
-            int row = (int)i / ALBUM_COVER_SIZE;
-            int col = (int)i % ALBUM_COVER_SIZE;
+        {            
+            int row = (int) i / ALBUM_COVER_SIZE;
+            int col = (int) i % ALBUM_COVER_SIZE;
             color_data[i] = GetImageColor(image, row, col);
         }
 
@@ -331,12 +331,12 @@ void InitializeMusicInfo(const char *music_file_path, MusicInfo *music_info, Tex
          * Color Quantization Using k-Means Clustering Algorithm.
          */
 
-        Color dominant_colors[4];                                                            // Note: Size = 4 is fixed.
+        Color dominant_colors[4];        // Note: Size = 4 is fixed.
         getDominantColors(n_points, color_data, dominant_colors); // From kmeans.h
 
         BG_COLOR = dominant_colors[0];
-        TEXT_COLOR = dominant_colors[1];
-        SPECTRUM_COLOR = dominant_colors[2];
+        TEXT_COLOR = dominant_colors[2];
+        SPECTRUM_COLOR = dominant_colors[1];
         PROGRESS_BAR_COLOR = dominant_colors[3];
     }
 
