@@ -265,17 +265,17 @@ void InitializeMusicInfo(const char *music_file_path, MusicInfo *music_info, Tex
     tag = taglib_file_tag(file);
     if (tag != NULL)
     {
-        char *title = taglib_tag_title(tag);
+        char *title  = taglib_tag_title(tag);
         char *artist = taglib_tag_artist(tag);
-        char *album = taglib_tag_album(tag);
-        char *genre = taglib_tag_genre(tag);
+        char *album  = taglib_tag_album(tag);
+        char *genre  = taglib_tag_genre(tag);
 
         /* Set the music file's basic information to the music_info struct. */
-        music_info->title = (char *)calloc(strlen(title) + 1, sizeof(char));
-        music_info->artist = (char *)calloc(strlen(artist) + 1, sizeof(char));
-        music_info->album = (char *)calloc(strlen(album) + 1, sizeof(char));
-        music_info->genre = (char *)calloc(strlen(genre) + 1, sizeof(char));
-        music_info->year = taglib_tag_year(tag);
+        music_info->title  = calloc(strlen(title)  + 1, sizeof(char));
+        music_info->artist = calloc(strlen(artist) + 1, sizeof(char));
+        music_info->album  = calloc(strlen(album)  + 1, sizeof(char));
+        music_info->genre  = calloc(strlen(genre)  + 1, sizeof(char));
+        music_info->year   = taglib_tag_year(tag);
 
         if (music_info->title != NULL)
         {
