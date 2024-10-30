@@ -327,17 +327,20 @@ void InitializeMusicInfo(const char *music_file_path, MusicInfo *music_info, Tex
         }
 
         /*
-         * Get top 4 most dominant colors in an image randomly.
+         * Extract Color pallete of size 4 in an image.
          * Color Quantization Using k-Means Clustering Algorithm.
          */
+        int color_pallete_size = 4;
+        Color *color_pallete = malloc(color_pallete_size * sizeof(Color));        // Note: Size = 4 is fixed.
+        getDominantColors(n_points, color_data, color_pallete, color_pallete_size); // From kmeans.h
 
-        Color dominant_colors[4];        // Note: Size = 4 is fixed.
-        getDominantColors(n_points, color_data, dominant_colors); // From kmeans.h
+        BG_COLOR = color_pallete[0];
+        TEXT_COLOR = color_pallete[2];
+        SPECTRUM_COLOR = color_pallete[1];
+        PROGRESS_BAR_COLOR = color_pallete[3];
 
-        BG_COLOR = dominant_colors[0];
-        TEXT_COLOR = dominant_colors[2];
-        SPECTRUM_COLOR = dominant_colors[1];
-        PROGRESS_BAR_COLOR = dominant_colors[3];
+        free(color_pallete);
+        color_pallete = NULL;
     }
 
     free(color_data);
