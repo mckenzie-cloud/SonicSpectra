@@ -1,3 +1,9 @@
+
+/*
+    AUTHOR: JAMES "MACKENZIE" REGALADO
+    Copyright (c) 2024 [James "Mckenzie" Regalado]
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -62,21 +68,19 @@ void RMS_TO_DBFS(float rms_values[], float dt, float smoothing_factor);
 void VisualizeSpectrum(float spectrum_scaling_factor);
 void DisplayProgressBar(int time_played);
 
-Color BG_COLOR = (Color){
-    12, 4, 4, 255};
-Color TEXT_COLOR = (Color){
-    255, 255, 255, 255};
-Color PROGRESS_BAR_COLOR = (Color){
-    255, 255, 255, 255};
-Color SPECTRUM_COLOR = (Color){
-    255, 255, 255, 255};
+
+// The default color theme
+Color BG_COLOR = {12, 4, 4, 255};
+Color TEXT_COLOR = {255, 255, 255, 255};
+Color PROGRESS_BAR_COLOR = {255, 255, 255, 255};
+Color SPECTRUM_COLOR = {255, 255, 255, 255};
 
 const char *default_music_cover = "default_cover.jpg"; // Default music album cover.
 
 int main(void)
 {
     // Initialization
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "SonicSpectra");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "SonicSpectra | Powered by RayLib");
     InitAudioDevice(); // Initialize audio device driver.
 
     //--------------------------------------------------------------------------------------

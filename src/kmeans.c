@@ -61,7 +61,7 @@ void getDominantColors(int n_points, Color *image_color_data, Color *dominant_co
             for (int cluster = 0; cluster < n_cluster; cluster++) {
 
                 Color color = (Color) {
-                    centroids[cluster][0], centroids[cluster][1], centroids[cluster][2]
+                    centroids[cluster][0], centroids[cluster][1], centroids[cluster][2], 255
                 };
 
                 int color_diff = distanceSquared(&color, &image_color_data[point]);
