@@ -102,7 +102,7 @@ int main(void)
     MusicInfo music_info = {NULL, NULL, NULL, NULL, 0};
 
     //--------------------------------------------------------------------------------------
-    float target_frequencies[TARGET_FREQ_SIZE] = {20.0f, 40.0f, 80.0f, 160.0f, 300.0f, 600.0f, 1200.0f, 5000.0f, 10000.0f, 22050.0f};
+    float target_frequencies[TARGET_FREQ_SIZE] = {20.0f, 40.0f, 80.0f, 160.0f, 320.0f, 640.0f, 1280.0f, 2560.0f, 5120.0f, 10200.0f};
     float smoothing_factor = 50.0f;
     float spectrum_scaling_factor = 2.0f;
 
