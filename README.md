@@ -5,10 +5,10 @@
 > Feel free to modify the code.
 
 ###Compiler
->> Uses mingw-w64 GCC compiler (MSVCRT environment). You can download [here] (https://packages.msys2.org/packages/mingw-w64-x86_64-gcc) <br/>
+>> Uses mingw-w64 GCC compiler (MSVCRT environment). You can download [here](https://packages.msys2.org/packages/mingw-w64-x86_64-gcc) <br/>
 
-[!NOTE]
-> GCC from mingw-w64 [UCRT environment] (https://packages.msys2.org/packages/mingw-w64-ucrt-x86_64-gcc) doesn't work! Use GCC from mingw-w64 [MSVCRT environment] (https://packages.msys2.org/packages/mingw-w64-x86_64-gcc) instead. <br/>
+> [!NOTE]
+> GCC from mingw-w64 [UCRT environment](https://packages.msys2.org/packages/mingw-w64-ucrt-x86_64-gcc) doesn't work! Use GCC from mingw-w64 [MSVCRT environment](https://packages.msys2.org/packages/mingw-w64-x86_64-gcc) instead. <br/>
 
 ## To build and run this program
 **Compiling the program:**
