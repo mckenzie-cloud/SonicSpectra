@@ -137,7 +137,7 @@ int main(void)
     float font_spacing = 1.5f;
 
     // Instruction text
-    const char *instruction_text = "Drag & Drop and .mp3 file";
+    const char *instruction_text = "Drag & Drop an .mp3 file";
     Vector2 instruction_text_measure = MeasureTextEx(pt_sans, instruction_text, FONTSIZE, font_spacing);
 
     // Music information texts
