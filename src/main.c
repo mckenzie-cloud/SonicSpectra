@@ -15,15 +15,18 @@
 #include "tag_c.h"
 #include "kmeans.h"
 
-
-#define SCREEN_HEIGHT 512
-#define SCREEN_WIDTH 512
-#define PROGRESS_BAR_HEIGHT 10
-#define ALBUM_COVER_SIZE 200
+#define GLSL_VERSION 330
 
 #define TWO_PI 6.28318530717959
 #define N (1 << 12)
 #define TARGET_FREQ_SIZE 10
+
+
+#define SCREEN_HEIGHT 512
+#define SCREEN_WIDTH 512
+#define PROGRESS_BAR_HEIGHT 4
+#define ALBUM_COVER_SIZE 200
+#define FONTSIZE 15
 
 /*
  * Author: Mckenzie J. Regalado
@@ -47,7 +50,7 @@ typedef struct
     float input_raw_Data[N];
     float input_data_with_windowing_function[N];
     float output_raw_Data[N];
-    float frequency_sqr_mag[N / 2];
+    float amplitudes[N / 2];
     float smooth_spectrum[TARGET_FREQ_SIZE - 1];
 } Data;
 
@@ -61,37 +64,33 @@ void PushSample(float sample);
 void ProcessAudioStreamCallback(void *bufferData, unsigned int frames);
 void ApplyHanningWindow();
 void DoFFT();
-float GetSqrMag(float a, float b);
+float GetAmp(float a, float b);
 void CalculateAmplitudes();
-void ApplyParsevalTheorem(float rms_values[], float target_frequencies[], unsigned int fs);
-void RMS_TO_DBFS(float rms_values[], float dt, float smoothing_factor);
-void VisualizeSpectrum(float spectrum_scaling_factor);
-void DisplayProgressBar(int time_played);
+void ApplyParsevalTheorem(float rms_values[], float target_frequencies[], unsigned int sample_rate);
+void RMS_TO_DBFS(float rms_values[], float full_scale, float dt, float smoothing_factor);
+void VisualizeSpectrum();
 
 
 // The default color theme
 Color BG_COLOR = {12, 4, 4, 255};
 Color TEXT_COLOR = {255, 255, 255, 255};
-Color PROGRESS_BAR_COLOR = {255, 255, 255, 255};
+Color BOX_BORDER_COLOR = {255, 255, 255, 255};
 Color SPECTRUM_COLOR = {255, 255, 255, 255};
 
-const char *default_music_cover = "default_cover.jpg"; // Default music album cover.
+const char *default_music_cover = "../../assets/img/default_cover.jpg"; // Default music album cover.
 
 int main(void)
 {
     // Initialization
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "SonicSpectra | Powered by RayLib");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "SonicSpectra | © 2024 MacKenzie Regalado");
     InitAudioDevice(); // Initialize audio device driver.
+    SetTargetFPS(60);  // Set target FPS (maximum)
 
     //--------------------------------------------------------------------------------------
-    const char *icon_path = "app-icon.png";
+    const char *icon_path = "../../assets/img/app-icon.png";
     Image app_icon = LoadImage(icon_path);
     SetWindowIcon(app_icon);
     UnloadImage(app_icon);
-
-    //--------------------------------------------------------------------------------------
-    /* Set font size */
-    int font_size = 10;
 
     //--------------------------------------------------------------------------------------
     Music music_stream;
@@ -99,25 +98,79 @@ int main(void)
 
     //--------------------------------------------------------------------------------------
     Texture2D album_cover_texture;
+    int album_cover_texture_posX = 32.0, album_cover_texture_posY = (SCREEN_HEIGHT/2 - ALBUM_COVER_SIZE) / 2.0;
     MusicInfo music_info = {NULL, NULL, NULL, NULL, 0};
 
     //--------------------------------------------------------------------------------------
     float target_frequencies[TARGET_FREQ_SIZE] = {20.0f, 40.0f, 80.0f, 160.0f, 320.0f, 640.0f, 1280.0f, 2560.0f, 5120.0f, 10200.0f};
-    float smoothing_factor = 50.0f;
-    float spectrum_scaling_factor = 2.0f;
+    float smoothing_factor = 90.0f;
+    float full_scale;   // digital full scale
 
     //--------------------------------------------------------------------------------------
     float durations = 0.0f;
     float time_played = 0.0f;
-    unsigned int fs = 0;
 
-    SetTargetFPS(60); // Set target FPS (maximum)
+    /* Shaders */ 
+    // Load shader
+    Shader shader = LoadShader(0, TextFormat("../../shaders/ripple_effect.fs", GLSL_VERSION));
+    
+    float time = 0.0f;
+    int time_loc = GetShaderLocation(shader, "uTime");
+    SetShaderValue(shader, time_loc, &time, SHADER_UNIFORM_FLOAT);
+
+    float ripple_wave_height = 0.0f;
+    int ripple_wave_height_loc = GetShaderLocation(shader, "uHeight");
+    SetShaderValue(shader, ripple_wave_height_loc, &ripple_wave_height, SHADER_UNIFORM_FLOAT);
+
+    int resolution_loc = GetShaderLocation(shader, "iResolution");
+    SetShaderValue(shader, resolution_loc, (float[2]){(float)ALBUM_COVER_SIZE, (float)ALBUM_COVER_SIZE}, SHADER_UNIFORM_VEC2);
+
+    int target_texture_pos_loc = GetShaderLocation(shader, "targetTexturePos");
+    SetShaderValue(shader, target_texture_pos_loc, (float[2]) {(float)album_cover_texture_posX, (float)album_cover_texture_posY}, SHADER_UNIFORM_VEC2);
+
+    int texture2dLoc = GetShaderLocation(shader, "targetTexture");
+    
+    //--------------------------------------------------------------------------------------
+    // Load font
+    Font pt_sans = LoadFont("../../assets/font/PTSans-Bold.ttf");
+    SetTextureFilter(pt_sans.texture, 1);
+    float font_spacing = 1.5f;
+
+    // Instruction text
+    const char *instruction_text = "Drag & Drop and .mp3 file";
+    Vector2 instruction_text_measure = MeasureTextEx(pt_sans, instruction_text, FONTSIZE, font_spacing);
+
+    // Music information texts
+    Vector2 title_text_measure, artist_text_measure, album_text_measure, genre_text_measure, year_text_measure;
+
+    //--------------------------------------------------------------------------------------
+    // Animation
+    Texture2D sonic_prog_bar_sprite = LoadTexture("../../assets/spritesheet/sonicdash.png");
+    Texture2D flag_prog_bar_sprite = LoadTexture("../../assets/spritesheet/flag.png");
+
+    Vector2 sonic_animation_pos = {32.0f, SCREEN_HEIGHT - sonic_prog_bar_sprite.height};
+    Vector2 flag_animation_pos = {SCREEN_WIDTH - 60.0f, SCREEN_HEIGHT - flag_prog_bar_sprite.height - 5.0f};
+
+    int sonic_animation_current_frame = 0, sonic_animation_frames_counter = 0, sonic_animation_frames_speed = 12;
+    int flag_animation_current_frame = 0, flag_animation_frames_counter = 0, flag_animation_frames_speed = 8;
+
+    Rectangle sonic_frame_rec;
+    Rectangle flag_frame_rec;
+
+    if (IsTextureReady(sonic_prog_bar_sprite)) {
+        sonic_frame_rec = (Rectangle) { 0.0f, 0.0f, (float)sonic_prog_bar_sprite.width/4, (float)sonic_prog_bar_sprite.height };
+    }
+
+    if (IsTextureReady(flag_prog_bar_sprite)) {
+        flag_frame_rec = (Rectangle) { 0.0f, 0.0f, (float)flag_prog_bar_sprite.width/5, (float)flag_prog_bar_sprite.height };
+    }
+    
 
     // Main game loop
-    while (!WindowShouldClose())
-    { // Detect window close button or ESC key
-        /** Get deltaTime in seconds. */
-        float dt = GetFrameTime();
+    while (!WindowShouldClose())  // Detect window close button or ESC key
+    {
+
+        float dt = GetFrameTime(); // Get time in seconds for last frame drawn (delta time)
 
         /** Update */
         //----------------------------------------------------------------------------------
@@ -151,19 +204,27 @@ int main(void)
                     //----------------------------------------------------------------------------------
                     music_stream = LoadMusicStream(file_path); // Load music stream from file
                     // ----------------------------------------------------------------------------------
-                    if (IsMusicReady(music_stream))
-                    { // Checks if the music stream is ready
+                    if (IsMusicReady(music_stream))   // Checks if the music stream is ready
+                    {
                         // ----------------------------------------------------------------------------------
                         has_music_loaded = true;
+                        sonic_animation_current_frame = 0;
                         durations = GetMusicTimeLength(music_stream);
-                        fs = music_stream.stream.sampleRate;
                         // ----------------------------------------------------------------------------------
                         InitializeMusicInfo(file_path, &music_info, &album_cover_texture);
+                        // ----------------------------------------------------------------------------------
+                        full_scale = 20.0f * log10f(powf(2.0f, (float) music_stream.stream.sampleSize) * sqrtf(3.0f / 2.0f));
                         // ----------------------------------------------------------------------------------
                         CleanUp();
                         // ----------------------------------------------------------------------------------
                         PlayMusicStream(music_stream);                                               // Start music playing
                         AttachAudioStreamProcessor(music_stream.stream, ProcessAudioStreamCallback); // Attach audio stream processor to stream, receives the samples as <float>s
+                        // ----------------------------------------------------------------------------------
+                        title_text_measure = MeasureTextEx(pt_sans, TextFormat("Title: %s", music_info.title), FONTSIZE, font_spacing);
+                        artist_text_measure = MeasureTextEx(pt_sans, TextFormat("Artist: %s", music_info.artist), FONTSIZE, font_spacing);
+                        album_text_measure = MeasureTextEx(pt_sans, TextFormat("Album: %s", music_info.album), FONTSIZE, font_spacing);
+                        genre_text_measure = MeasureTextEx(pt_sans, TextFormat("Genre: %s", music_info.genre), FONTSIZE, font_spacing);
+                        year_text_measure = MeasureTextEx(pt_sans, TextFormat("Year: %d", music_info.year), FONTSIZE, font_spacing);
                         // ----------------------------------------------------------------------------------
                     }
                 }
@@ -187,16 +248,43 @@ int main(void)
             //----------------------------------------------------------------------------------
             float rms_values[TARGET_FREQ_SIZE - 1] = {0.0};
             //----------------------------------------------------------------------------------
-            ApplyParsevalTheorem(rms_values, target_frequencies, fs);
+            ApplyParsevalTheorem(rms_values, target_frequencies, music_stream.stream.sampleRate);
             //----------------------------------------------------------------------------------
-            RMS_TO_DBFS(rms_values, dt, smoothing_factor);
+            RMS_TO_DBFS(rms_values, full_scale, dt, smoothing_factor);
             //----------------------------------------------------------------------------------
             if (durations > 0.0f)
             {
                 time_played = GetMusicTimePlayed(music_stream) / durations * (SCREEN_WIDTH - 64);
+                sonic_animation_pos.x = time_played;
             }
             //----------------------------------------------------------------------------------
         }
+
+
+        //----------------------------------------------------------------------------------
+        if (has_music_loaded) {
+            // Update animation frame
+            sonic_animation_frames_counter++;
+            if (sonic_animation_frames_counter >= (60/sonic_animation_frames_speed))
+            {
+                sonic_animation_frames_counter = 0;
+                sonic_animation_current_frame++;
+                if (sonic_animation_current_frame > 3) sonic_animation_current_frame = 0;
+
+                sonic_frame_rec.x = (float)sonic_animation_current_frame*(float)sonic_prog_bar_sprite.width/4;
+            }
+
+            flag_animation_frames_counter++;
+            if (flag_animation_frames_counter >= (60/flag_animation_frames_speed))
+            {
+                flag_animation_frames_counter = 0;
+                flag_animation_current_frame++;
+                if (flag_animation_current_frame > 4) flag_animation_current_frame = 0;
+
+                flag_frame_rec.x = (float)flag_animation_current_frame*(float)flag_prog_bar_sprite.width/5;
+            }
+        }
+
 
         //----------------------------------------------------------------------------------
         /** Draw */
@@ -205,30 +293,53 @@ int main(void)
         //----------------------------------------------------------------------------------
         ClearBackground(BG_COLOR);
         //----------------------------------------------------------------------------------
-        DrawText("Drag & Drop an mp3 file", 2, 2, font_size, TEXT_COLOR);
+        if (!has_music_loaded) {
+            DrawTextEx(pt_sans, instruction_text, (Vector2) {(SCREEN_WIDTH - instruction_text_measure.x) / 2, (SCREEN_HEIGHT - instruction_text_measure.y) / 2}, FONTSIZE, font_spacing, TEXT_COLOR);
+        }
         //----------------------------------------------------------------------------------
         if (has_music_loaded)
         {
-            DrawTexture(album_cover_texture, 2, font_size + 4, WHITE);
+            time = (float)GetTime();   // Get elapsed time in seconds since InitWindow()
+            SetShaderValue(shader, time_loc, &time, SHADER_UNIFORM_FLOAT);
+            float mid_bass = data.smooth_spectrum[2];
+            ripple_wave_height = mid_bass / 1000.0f;
+            SetShaderValue(shader, ripple_wave_height_loc, &ripple_wave_height, SHADER_UNIFORM_FLOAT);
+
             //----------------------------------------------------------------------------------
-            DrawText(TextFormat("Title: %s", music_info.title), ALBUM_COVER_SIZE + 10, font_size + 4, 10, TEXT_COLOR);
+            BeginShaderMode(shader);
+                SetShaderValueTexture(shader, texture2dLoc, album_cover_texture); // Set shader uniform value for texture (sampler2d)
+                DrawTexture(album_cover_texture, album_cover_texture_posX, album_cover_texture_posY, WHITE);
+            EndShaderMode();
+
             //----------------------------------------------------------------------------------
-            DrawText(TextFormat("Artist: %s", music_info.artist), ALBUM_COVER_SIZE + 10, (2 * font_size) + 8, 10, TEXT_COLOR);
+            DrawRectangleLines(32, SCREEN_HEIGHT/2, SCREEN_WIDTH - 64, 180, BOX_BORDER_COLOR);
+
             //----------------------------------------------------------------------------------
-            DrawText(TextFormat("Album: %s", music_info.album), ALBUM_COVER_SIZE + 10, (3 * font_size) + 12, 10, TEXT_COLOR);
+            int total_text_height = title_text_measure.y + artist_text_measure.y + album_text_measure.y + genre_text_measure.y + year_text_measure.y;
+            int max_text_width = fmaxf(title_text_measure.x, artist_text_measure.x);
+                max_text_width = fmaxf(max_text_width, album_text_measure.x);
+                max_text_width = fmaxf(max_text_width, genre_text_measure.x);
+                max_text_width = fmaxf(max_text_width, year_text_measure.x);
+
             //----------------------------------------------------------------------------------
-            DrawText(TextFormat("Genre: %s", music_info.genre), ALBUM_COVER_SIZE + 10, (4 * font_size) + 16, 10, TEXT_COLOR);
+            int offSetY = (180 - total_text_height) / 2;
+            int offSetX = ((SCREEN_WIDTH - 64) - max_text_width) / 2;
+
             //----------------------------------------------------------------------------------
-            DrawText(TextFormat("Year: %d", music_info.year), ALBUM_COVER_SIZE + 10, (5 * font_size) + 20, 10, TEXT_COLOR);
+            DrawTextEx(pt_sans, TextFormat("Title: %s", music_info.title), (Vector2) {32 + offSetX, SCREEN_HEIGHT/2 + offSetY}, FONTSIZE, font_spacing, TEXT_COLOR);
+            DrawTextEx(pt_sans, TextFormat("Artist: %s", music_info.artist), (Vector2) {32 + offSetX, (SCREEN_HEIGHT/2 + FONTSIZE) + offSetY}, FONTSIZE, font_spacing, TEXT_COLOR);
+            DrawTextEx(pt_sans, TextFormat("Album: %s", music_info.album), (Vector2) {32 + offSetX, (SCREEN_HEIGHT/2 + (2 * FONTSIZE)) + offSetY}, FONTSIZE, font_spacing, TEXT_COLOR);
+            DrawTextEx(pt_sans, TextFormat("Genre: %s", music_info.genre), (Vector2) {32 + offSetX, (SCREEN_HEIGHT/2 + (3 * FONTSIZE)) + offSetY}, FONTSIZE, font_spacing, TEXT_COLOR);
+            DrawTextEx(pt_sans, TextFormat("Year: %d", music_info.year), (Vector2) {32 + offSetX, (SCREEN_HEIGHT/2 + (4 * FONTSIZE)) + offSetY}, FONTSIZE, font_spacing, TEXT_COLOR);
         }
         //----------------------------------------------------------------------------------
         if (IsMusicReady(music_stream))
         {
             //----------------------------------------------------------------------------------
-            VisualizeSpectrum(spectrum_scaling_factor);
+            VisualizeSpectrum();
             //----------------------------------------------------------------------------------
-            DisplayProgressBar((int)time_played);
-            //----------------------------------------------------------------------------------
+            DrawTextureRec(sonic_prog_bar_sprite, sonic_frame_rec, sonic_animation_pos, WHITE);  // Draw part of the texture
+            DrawTextureRec(flag_prog_bar_sprite, flag_frame_rec, flag_animation_pos, WHITE);  // Draw part of the texture
         }
         //----------------------------------------------------------------------------------
         EndDrawing();
@@ -241,8 +352,16 @@ int main(void)
     {
         DetachAudioStreamProcessor(music_stream.stream, ProcessAudioStreamCallback); // Disconnect audio stream processor
         UnloadMusicStream(music_stream);                                             // Unload music stream buffers from RAM
-        UnloadTexture(album_cover_texture);                                          // Texture unloading
+        UnloadTexture(album_cover_texture);                                         // Texture unloading
     }
+    //----------------------------------------------------------------------------------
+    UnloadShader(shader);
+    //----------------------------------------------------------------------------------
+    UnloadFont(pt_sans);
+    //----------------------------------------------------------------------------------
+    UnloadTexture(sonic_prog_bar_sprite); 
+    //----------------------------------------------------------------------------------
+    UnloadTexture(flag_prog_bar_sprite);
     //----------------------------------------------------------------------------------
     CloseAudioDevice(); // Close audio device (music streaming is automatically stopped)
     //----------------------------------------------------------------------------------
@@ -341,7 +460,7 @@ void InitializeMusicInfo(const char *music_file_path, MusicInfo *music_info, Tex
         BG_COLOR = color_pallete[0];
         TEXT_COLOR = color_pallete[2];
         SPECTRUM_COLOR = color_pallete[1];
-        PROGRESS_BAR_COLOR = color_pallete[3];
+        BOX_BORDER_COLOR = color_pallete[3];
 
         free(color_pallete);
         color_pallete = NULL;
@@ -374,7 +493,7 @@ void CleanUp()
     memset(data.input_raw_Data, 0, N * sizeof(float));
     memset(data.input_data_with_windowing_function, 0, N * sizeof(float));
     memset(data.output_raw_Data, 0, N * sizeof(float));
-    memset(data.frequency_sqr_mag, 0, (N / 2) * sizeof(float));
+    memset(data.amplitudes, 0, (N / 2) * sizeof(float));
     memset(data.smooth_spectrum, 0, (TARGET_FREQ_SIZE - 1) * sizeof(float));
 }
 
@@ -422,9 +541,9 @@ void DoFFT()
     realft(data.output_raw_Data, N, 1);
 }
 
-float GetSqrMag(float a, float b)
+float GetAmp(float a, float b)
 {
-    return a * a + b * b;
+    return sqrtf(a*a + b*b);
 }
 
 void CalculateAmplitudes()
@@ -432,12 +551,12 @@ void CalculateAmplitudes()
     for (size_t c = 0; c < (N / 2); c++)
     {
         /* code */
-        float sqr_mag = GetSqrMag(data.output_raw_Data[2 * c], data.output_raw_Data[2 * c + 1]); // even indexes are real values and odd indexes are complex value.
-        data.frequency_sqr_mag[c] = sqr_mag;
+        float amp = GetAmp(data.output_raw_Data[2 * c], data.output_raw_Data[2 * c + 1]); // even indexes are real values and odd indexes are complex value.
+        data.amplitudes[c] = 2.0f * amp;  // 2.0 is the amplitude correction factor for hanning window.
     }
 }
 
-void ApplyParsevalTheorem(float rms_values[], float target_frequencies[], unsigned int fs)
+void ApplyParsevalTheorem(float rms_values[], float target_frequencies[], unsigned int sample_rate)
 {
 
     /******************************************************************************************************************
@@ -453,13 +572,14 @@ void ApplyParsevalTheorem(float rms_values[], float target_frequencies[], unsign
     for (size_t bin_index = 0; bin_index < (N / 2); bin_index++)
     {
         /* code */
-        float freq = (bin_index + 1) * (fs / N);
+        float freq = (bin_index + 1) * (sample_rate / N);
         for (size_t j = 0; j < TARGET_FREQ_SIZE - 1; j++)
         {
             /* code */
             if (freq >= target_frequencies[j] && freq < target_frequencies[j + 1])
             {
-                spectrum[j] = spectrum[j] + data.frequency_sqr_mag[bin_index];
+                float amp = data.amplitudes[bin_index];
+                spectrum[j] += amp * amp;
                 n_elem[j] += 1;
             }
         }
@@ -474,38 +594,34 @@ void ApplyParsevalTheorem(float rms_values[], float target_frequencies[], unsign
     }
 }
 
-void RMS_TO_DBFS(float rms_values[], float dt, float smoothing_factor)
+void RMS_TO_DBFS(float rms_values[], float full_scale, float dt, float smoothing_factor)
 {
     /* https://stackoverflow.com/questions/20408388/how-to-filter-fft-data-for-audio-visualisation * 
      * https://dsp.stackexchange.com/questions/8785/how-to-compute-dbfs                            */
+
     for (size_t i = 0; i < TARGET_FREQ_SIZE - 1; i++)
     {
-        /* code */
         float root_mean_square = rms_values[i];
-        float dBFS = 0.0;
-        if (root_mean_square > 0.0)
+        float dBFS = 0.0f;
+        if (root_mean_square > 1e-5)
         {
-            dBFS = 20.0f * log10f(root_mean_square); // Convert RMS value to Decibel Full Scale (dBFS) value.
-            if (dBFS < 0)
-            {
-                dBFS = 0.0;
-            }
+            dBFS = 20.0f * log10f(root_mean_square / full_scale); // Convert RMS value to Decibel Full Scale (dBFS) value.
         }
         data.smooth_spectrum[i] += (dBFS - data.smooth_spectrum[i]) * dt * smoothing_factor; // Smoothing the spectrum output value.
     }
 }
 
-void VisualizeSpectrum(float spectrum_scaling_factor)
+void VisualizeSpectrum()
 {
-    int h = SCREEN_HEIGHT - 32;
+    int h = FONTSIZE + 4 + ALBUM_COVER_SIZE;
     for (size_t i = 0; i < TARGET_FREQ_SIZE - 1; i++)
     {
-        /* code */
-        DrawRectangleLines(184 + (i * 16), h - (spectrum_scaling_factor * data.smooth_spectrum[i]), 15, (spectrum_scaling_factor * data.smooth_spectrum[i]), SPECTRUM_COLOR);
+        float smooth_spectrum_i = data.smooth_spectrum[i];
+        if (smooth_spectrum_i < 0.0f) {
+            smooth_spectrum_i *= -1.0f;
+            DrawRectangleLines((32 + ALBUM_COVER_SIZE + 52) + (i * 16), h/2, 15, smooth_spectrum_i, SPECTRUM_COLOR);
+        } else {
+            DrawRectangle((32 + ALBUM_COVER_SIZE + 52) + (i * 16), (h/2) - 3.0f * smooth_spectrum_i, 15, (3.0f * smooth_spectrum_i), SPECTRUM_COLOR);
+        }
     }
-}
-
-void DisplayProgressBar(int time_played)
-{
-    DrawRectangle(32, SCREEN_HEIGHT - (PROGRESS_BAR_HEIGHT + 6), (int)time_played, PROGRESS_BAR_HEIGHT, PROGRESS_BAR_COLOR);
 }

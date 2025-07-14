@@ -4,9 +4,11 @@
 > This only works on Windows 10-11 64-bit machine. <br/>
 > Feel free to modify the code.
 
-**Your GCC compiler should be from mingw64 environment** <br/>
-**Using a GCC compiler from other environment (ex. UCRT64) will not work** <br>
->> You can download the mingw64 GCC compiler package from [Msys2](https://packages.msys2.org/groups/mingw-w64-x86_64-toolchain)
+###Compiler
+>> Uses mingw-w64 GCC compiler (MSVCRT environment). You can download [here] (https://packages.msys2.org/packages/mingw-w64-x86_64-gcc) <br/>
+
+[!NOTE]
+> GCC from mingw-w64 [UCRT environment] (https://packages.msys2.org/packages/mingw-w64-ucrt-x86_64-gcc) doesn't work! Use GCC from mingw-w64 [MSVCRT environment] (https://packages.msys2.org/packages/mingw-w64-x86_64-gcc) instead. <br/>
 
 ## To build and run this program
 **Compiling the program:**
@@ -18,7 +20,7 @@
 >> Release mode: Navigate to -> bin -> Release -> SonicSpectra.exe and double click to run.
 
 > [!TIP]
-> You can use [MP3TAG](https://www.mp3tag.de/en/) to edit metadata of audio files (.mp3 files). <br/>
+> You can use [MP3TAG](https://www.mp3tag.de/en/) to edit metadata of your audio files (.mp3 files). <br/>
 
 ### Demo
 > https://youtu.be/uhopJ53Wge0?si=t0VCcJGiUJhUMyDM
