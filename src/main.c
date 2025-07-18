@@ -521,17 +521,12 @@ void ProcessAudioStreamCallback(void *bufferData, unsigned int frames)
 
 void ApplyHanningWindow()
 {
-    /*
-     * https://community.sw.siemens.com/s/article/window-correction-factors
-     * https://www.vibrationdata.com/tutorials_alt/Hanning_compensation.pdf
-     */
-    float energy_correction_factor = sqrtf(8.0f / 3.0f);
     for (size_t n = 0; n < N; n++)
     {
         /* code */
         float t = (float)n / (N - 1);
         float h = (0.5 * (1.0 - cosf(TWO_PI * t)));
-        data.input_data_with_windowing_function[n] = data.input_raw_Data[n] * h * energy_correction_factor;
+        data.input_data_with_windowing_function[n] = data.input_raw_Data[n] * h;
     }
 }
 
@@ -548,11 +543,18 @@ float GetAmp(float a, float b)
 
 void CalculateAmplitudes()
 {
+    /*
+     * https://community.sw.siemens.com/s/article/window-correction-factors
+     * https://www.vibrationdata.com/tutorials_alt/Hanning_compensation.pdf
+     * Amplitude Correction Factor (ACF) for hanning window is 2.0
+     * Energy Correction Factor (ECF) for hanning window is sqrt(8/3)
+     */
+    float ECF = sqrtf(8.0f / 3.0f);
     for (size_t c = 0; c < (N / 2); c++)
     {
         /* code */
         float amp = GetAmp(data.output_raw_Data[2 * c], data.output_raw_Data[2 * c + 1]); // even indexes are real values and odd indexes are complex value.
-        data.amplitudes[c] = 2.0f * amp;  // 2.0 is the amplitude correction factor for hanning window.
+        data.amplitudes[c] = ECF * amp;
     }
 }
 
